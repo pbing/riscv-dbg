@@ -201,11 +201,13 @@ module dm_mem #(
   logic [63:0] word_mux;
   assign word_mux = (fwd_rom_q) ? rom_rdata : rdata_q;
 
+ generate
   if (BusWidth == 64) begin : gen_word_mux64
     assign rdata_o = word_mux;
   end else begin : gen_word_mux32
     assign rdata_o = (word_enable32_q) ? word_mux[32 +: 32] : word_mux[0 +: 32];
   end
+ endgenerate
 
   // read/write logic
   logic [63:0] data_bits;
@@ -233,7 +235,7 @@ module dm_mem #(
     if (req_i) begin
       // this is a write
       if (we_i) begin
-        unique case (addr_i[DbgAddressBits-1:0]) inside
+        unique casez (addr_i[DbgAddressBits-1:0])
           HaltedAddr: begin
             halted_aligned[wdata_hartsel] = 1'b1;
             halted_d_aligned[wdata_hartsel] = 1'b1;
@@ -250,7 +252,7 @@ module dm_mem #(
           // an exception occurred during execution
           ExceptionAddr: exception = 1'b1;
           // core can write data registers
-          [(dm::DataAddr):DataEndAddr]: begin
+          DataBaseAddr, DataBaseAddr + 4: begin
             data_valid_o = 1'b1;
             for (int i = 0; i < $bits(be_i); i++) begin
               if (be_i[i]) begin
@@ -263,7 +265,7 @@ module dm_mem #(
 
       // this is a read
       end else begin
-        unique case (addr_i[DbgAddressBits-1:0]) inside
+        unique case (addr_i[DbgAddressBits-1:0])
           // variable ROM content
           WhereToAddr: begin
             // variable jump to abstract cmd, program_buffer or resume
@@ -285,7 +287,7 @@ module dm_mem #(
             end
           end
 
-          [DataBaseAddr:DataEndAddr]: begin
+          DataBaseAddr, DataBaseAddr + 4: begin
             rdata_d = {
                       data_i[$clog2(dm::ProgBufSize)'(addr_i[DbgAddressBits-1:3] -
                           DataBaseAddr[DbgAddressBits-1:3] + 1'b1)],
@@ -294,19 +296,22 @@ module dm_mem #(
                       };
           end
 
-          [ProgBufBaseAddr:ProgBufEndAddr]: begin
+          ProgBufBaseAddr, ProgBufBaseAddr + 1*4, ProgBufBaseAddr + 2*4, ProgBufBaseAddr + 3*4,
+          ProgBufBaseAddr + 4*4, ProgBufBaseAddr + 5*4, ProgBufBaseAddr + 6*4, ProgBufBaseAddr + 7*4: begin
             rdata_d = progbuf[$clog2(dm::ProgBufSize)'(addr_i[DbgAddressBits-1:3] -
                           ProgBufBaseAddr[DbgAddressBits-1:3])];
           end
 
           // two slots for abstract command
-          [AbstractCmdBaseAddr:AbstractCmdEndAddr]: begin
+          AbstractCmdBaseAddr, AbstractCmdBaseAddr + 1*4, AbstractCmdBaseAddr + 2*4, AbstractCmdBaseAddr + 3*4,
+          AbstractCmdBaseAddr + 4*4, AbstractCmdBaseAddr + 5*4, AbstractCmdBaseAddr + 6*4, AbstractCmdBaseAddr + 7*4,
+          AbstractCmdBaseAddr + 8*4, AbstractCmdBaseAddr + 9*4: begin
             // return the correct address index
             rdata_d = abstract_cmd[3'(addr_i[DbgAddressBits-1:3] -
                            AbstractCmdBaseAddr[DbgAddressBits-1:3])];
           end
           // harts are polling for flags here
-          [FlagsBaseAddr:FlagsEndAddr]: begin
+          12'b01??_????_????: begin // [FlagsBaseAddr:FlagsEndAddr]
             // release the corresponding hart
             if (({addr_i[DbgAddressBits-1:3], 3'b0} - FlagsBaseAddr[DbgAddressBits-1:0]) ==
               (DbgAddressBits'(hartsel) & {{(DbgAddressBits-3){1'b1}}, 3'b0})) begin
