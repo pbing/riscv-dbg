@@ -235,7 +235,7 @@ module dm_mem #(
     if (req_i) begin
       // this is a write
       if (we_i) begin
-        unique casez (addr_i[DbgAddressBits-1:0])
+        unique case (addr_i[DbgAddressBits-1:0]) inside
           HaltedAddr: begin
             halted_aligned[wdata_hartsel] = 1'b1;
             halted_d_aligned[wdata_hartsel] = 1'b1;
@@ -252,7 +252,10 @@ module dm_mem #(
           // an exception occurred during execution
           ExceptionAddr: exception = 1'b1;
           // core can write data registers
-          DataBaseAddr, DataBaseAddr + 4: begin
+          DataBaseAddr, DataBaseAddr + 1, DataBaseAddr + 2, DataBaseAddr + 3,
+          DataBaseAddr + 4, DataBaseAddr + 5, DataBaseAddr + 6, DataBaseAddr + 7,
+          DataBaseAddr + 8: begin
+          //[(dm::DataAddr):DataEndAddr]: begin
             data_valid_o = 1'b1;
             for (int i = 0; i < $bits(be_i); i++) begin
               if (be_i[i]) begin
@@ -265,7 +268,8 @@ module dm_mem #(
 
       // this is a read
       end else begin
-        unique case (addr_i[DbgAddressBits-1:0])
+        unique casez (addr_i[DbgAddressBits-1:0])
+//        unique case (addr_i[DbgAddressBits-1:0]) inside
           // variable ROM content
           WhereToAddr: begin
             // variable jump to abstract cmd, program_buffer or resume
@@ -287,7 +291,10 @@ module dm_mem #(
             end
           end
 
-          DataBaseAddr, DataBaseAddr + 4: begin
+          DataBaseAddr, DataBaseAddr + 1, DataBaseAddr + 2, DataBaseAddr + 3,
+          DataBaseAddr + 4, DataBaseAddr + 5, DataBaseAddr + 6, DataBaseAddr + 7,
+          DataBaseAddr + 8: begin
+          //[DataBaseAddr:DataEndAddr]: begin
             rdata_d = {
                       data_i[$clog2(dm::ProgBufSize)'(addr_i[DbgAddressBits-1:3] -
                           DataBaseAddr[DbgAddressBits-1:3] + 1'b1)],
@@ -296,22 +303,38 @@ module dm_mem #(
                       };
           end
 
-          ProgBufBaseAddr, ProgBufBaseAddr + 1*4, ProgBufBaseAddr + 2*4, ProgBufBaseAddr + 3*4,
-          ProgBufBaseAddr + 4*4, ProgBufBaseAddr + 5*4, ProgBufBaseAddr + 6*4, ProgBufBaseAddr + 7*4: begin
+          ProgBufBaseAddr, ProgBufBaseAddr + 1, ProgBufBaseAddr + 2, ProgBufBaseAddr + 3,
+          ProgBufBaseAddr + 4, ProgBufBaseAddr + 5, ProgBufBaseAddr + 6, ProgBufBaseAddr + 7,
+          ProgBufBaseAddr + 8, ProgBufBaseAddr + 9, ProgBufBaseAddr + 10, ProgBufBaseAddr + 11,
+          ProgBufBaseAddr + 12, ProgBufBaseAddr + 13, ProgBufBaseAddr + 14, ProgBufBaseAddr + 15,
+          ProgBufBaseAddr + 16, ProgBufBaseAddr + 17, ProgBufBaseAddr + 18, ProgBufBaseAddr + 19,
+          ProgBufBaseAddr + 20, ProgBufBaseAddr + 21, ProgBufBaseAddr + 22, ProgBufBaseAddr + 23,
+          ProgBufBaseAddr + 24, ProgBufBaseAddr + 25, ProgBufBaseAddr + 26, ProgBufBaseAddr + 27,
+          ProgBufBaseAddr + 28, ProgBufBaseAddr + 29, ProgBufBaseAddr + 30, ProgBufBaseAddr + 31: begin
+          //[ProgBufBaseAddr:ProgBufEndAddr]: begin
             rdata_d = progbuf[$clog2(dm::ProgBufSize)'(addr_i[DbgAddressBits-1:3] -
                           ProgBufBaseAddr[DbgAddressBits-1:3])];
           end
 
           // two slots for abstract command
-          AbstractCmdBaseAddr, AbstractCmdBaseAddr + 1*4, AbstractCmdBaseAddr + 2*4, AbstractCmdBaseAddr + 3*4,
-          AbstractCmdBaseAddr + 4*4, AbstractCmdBaseAddr + 5*4, AbstractCmdBaseAddr + 6*4, AbstractCmdBaseAddr + 7*4,
-          AbstractCmdBaseAddr + 8*4, AbstractCmdBaseAddr + 9*4: begin
+          AbstractCmdBaseAddr, AbstractCmdBaseAddr + 1, AbstractCmdBaseAddr + 2, AbstractCmdBaseAddr + 3,
+          AbstractCmdBaseAddr + 4, AbstractCmdBaseAddr + 5, AbstractCmdBaseAddr + 6, AbstractCmdBaseAddr + 7,
+          AbstractCmdBaseAddr + 8, AbstractCmdBaseAddr + 9, AbstractCmdBaseAddr + 10, AbstractCmdBaseAddr + 11,
+          AbstractCmdBaseAddr + 12, AbstractCmdBaseAddr + 13, AbstractCmdBaseAddr + 14, AbstractCmdBaseAddr + 15,
+          AbstractCmdBaseAddr + 16, AbstractCmdBaseAddr + 17, AbstractCmdBaseAddr + 18, AbstractCmdBaseAddr + 19,
+          AbstractCmdBaseAddr + 20, AbstractCmdBaseAddr + 21, AbstractCmdBaseAddr + 22, AbstractCmdBaseAddr + 23,
+          AbstractCmdBaseAddr + 24, AbstractCmdBaseAddr + 25, AbstractCmdBaseAddr + 26, AbstractCmdBaseAddr + 27,
+          AbstractCmdBaseAddr + 28, AbstractCmdBaseAddr + 29, AbstractCmdBaseAddr + 30, AbstractCmdBaseAddr + 31,
+          AbstractCmdBaseAddr + 32, AbstractCmdBaseAddr + 33, AbstractCmdBaseAddr + 34, AbstractCmdBaseAddr + 35,
+          AbstractCmdBaseAddr + 36, AbstractCmdBaseAddr + 37, AbstractCmdBaseAddr + 38, AbstractCmdBaseAddr + 39: begin
+          //[AbstractCmdBaseAddr:AbstractCmdEndAddr]: begin
             // return the correct address index
             rdata_d = abstract_cmd[3'(addr_i[DbgAddressBits-1:3] -
                            AbstractCmdBaseAddr[DbgAddressBits-1:3])];
           end
           // harts are polling for flags here
-          12'b01??_????_????: begin // [FlagsBaseAddr:FlagsEndAddr]
+          12'b01??_????_????: begin
+          //[FlagsBaseAddr:FlagsEndAddr]: begin
             // release the corresponding hart
             if (({addr_i[DbgAddressBits-1:3], 3'b0} - FlagsBaseAddr[DbgAddressBits-1:0]) ==
               (DbgAddressBits'(hartsel) & {{(DbgAddressBits-3){1'b1}}, 3'b0})) begin

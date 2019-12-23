@@ -289,7 +289,7 @@ module dm_csrs #(
     // reads
     if (dmi_req_ready_o && dmi_req_valid_i && dtm_op == dm::DTM_READ) begin
       unique case ({1'b0, dmi_req_i.addr})
-        dm::Data0, dm::Data1: begin
+        dm::Data0, dm::Data1, dm::Data2: begin
           // logic [$clog2(dm::DataCount)-1:0] resp_queue_idx;
           // resp_queue_idx = dmi_req_i.addr[4:0] - int'(dm::Data0);
           resp_queue_data = data_q[$clog2(dm::DataCount)'(autoexecdata_idx)];
@@ -308,7 +308,8 @@ module dm_csrs #(
         // command is read-only
         dm::Command:    resp_queue_data = '0;
         dm::ProgBuf0, dm::ProgBuf1, dm::ProgBuf2, dm::ProgBuf3,
-        dm::ProgBuf4, dm::ProgBuf5, dm::ProgBuf6, dm::ProgBuf7: begin
+        dm::ProgBuf4, dm::ProgBuf5, dm::ProgBuf6, dm::ProgBuf7,
+        dm::ProgBuf8: begin
           resp_queue_data = progbuf_q[dmi_req_i.addr[$clog2(dm::ProgBufSize)-1:0]];
           if (!cmdbusy_i) begin
             // check whether we need to re-execute the command (just give a cmd_valid)
@@ -363,7 +364,7 @@ module dm_csrs #(
     // write
     if (dmi_req_ready_o && dmi_req_valid_i && dtm_op == dm::DTM_WRITE) begin
       unique case (dm::dm_csr_e'({1'b0, dmi_req_i.addr}))
-        dm::Data0, dm::Data1: begin
+        dm::Data0, dm::Data1, dm::Data2: begin
           // attempts to write them while busy is set does not change their value
           if (!cmdbusy_i && dm::DataCount > 0) begin
             data_d[dmi_req_i.addr[$clog2(dm::DataCount)-1:0]] = dmi_req_i.data;
@@ -419,7 +420,8 @@ module dm_csrs #(
           end
         end
         dm::ProgBuf0, dm::ProgBuf1, dm::ProgBuf2, dm::ProgBuf3,
-        dm::ProgBuf4, dm::ProgBuf5, dm::ProgBuf6, dm::ProgBuf7: begin
+        dm::ProgBuf4, dm::ProgBuf5, dm::ProgBuf6, dm::ProgBuf7,
+        dm::ProgBuf8: begin
           // attempts to write them while busy is set does not change their value
           if (!cmdbusy_i) begin
             progbuf_d[dmi_req_i.addr[$clog2(dm::ProgBufSize)-1:0]] = dmi_req_i.data;
