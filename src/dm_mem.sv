@@ -235,7 +235,7 @@ module dm_mem #(
     if (req_i) begin
       // this is a write
       if (we_i) begin
-        unique case (addr_i[DbgAddressBits-1:0]) inside
+        unique case (addr_i[DbgAddressBits-1:0])
           HaltedAddr: begin
             halted_aligned[wdata_hartsel] = 1'b1;
             halted_d_aligned[wdata_hartsel] = 1'b1;
@@ -269,7 +269,6 @@ module dm_mem #(
       // this is a read
       end else begin
         unique casez (addr_i[DbgAddressBits-1:0])
-//        unique case (addr_i[DbgAddressBits-1:0]) inside
           // variable ROM content
           WhereToAddr: begin
             // variable jump to abstract cmd, program_buffer or resume
